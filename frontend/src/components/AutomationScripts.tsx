@@ -1,16 +1,27 @@
-
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Code, Copy, Download, Play, Settings } from 'lucide-react';
+import { Code, Copy, Download, Play, Settings } from "lucide-react";
 
 export default function AutomationScripts() {
-  const [framework, setFramework] = useState('');
-  const [testScenario, setTestScenario] = useState('');
-  const [generatedScript, setGeneratedScript] = useState('');
+  const [framework, setFramework] = useState("");
+  const [testScenario, setTestScenario] = useState("");
+  const [generatedScript, setGeneratedScript] = useState("");
 
   const generateScript = () => {
     const sampleScript = `// ${framework} Test Script
@@ -33,14 +44,17 @@ describe('Sample Test', () => {
           Automation Script Generator
         </CardTitle>
         <CardDescription>
-          Generate Selenium, Playwright, and Cypress scripts from your test scenarios
+          Generate Selenium, Playwright, and Cypress scripts from your test
+          scenarios
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Framework</label>
+              <label className="text-sm font-medium mb-2 block">
+                Framework
+              </label>
               <Select value={framework} onValueChange={setFramework}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select automation framework" />
@@ -55,7 +69,9 @@ describe('Sample Test', () => {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Test Scenario</label>
+              <label className="text-sm font-medium mb-2 block">
+                Test Scenario
+              </label>
               <Textarea
                 placeholder="Describe your test scenario in plain English...
 Example: Login to the application, navigate to dashboard, click on profile settings, update email address, and verify the change"
@@ -65,8 +81,8 @@ Example: Login to the application, navigate to dashboard, click on profile setti
               />
             </div>
 
-            <Button 
-              onClick={generateScript} 
+            <Button
+              onClick={generateScript}
               className="w-full"
               disabled={!framework || !testScenario}
             >
@@ -80,9 +96,7 @@ Example: Login to the application, navigate to dashboard, click on profile setti
               <label className="text-sm font-medium">Generated Script</label>
               {generatedScript && (
                 <div className="flex gap-2">
-                  <Badge variant="secondary">
-                    {framework}
-                  </Badge>
+                  <Badge variant="secondary">{framework}</Badge>
                   <Button variant="outline" size="sm">
                     <Copy className="w-4 h-4 mr-1" />
                     Copy
@@ -94,7 +108,7 @@ Example: Login to the application, navigate to dashboard, click on profile setti
                 </div>
               )}
             </div>
-            
+
             {generatedScript ? (
               <div className="bg-muted p-4 rounded-lg font-mono text-sm overflow-auto max-h-64">
                 <pre>{generatedScript}</pre>
@@ -103,7 +117,8 @@ Example: Login to the application, navigate to dashboard, click on profile setti
               <div className="bg-muted/30 p-8 rounded-lg text-center">
                 <Code className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">
-                  Select a framework and describe your test scenario to generate automation scripts
+                  Select a framework and describe your test scenario to generate
+                  automation scripts
                 </p>
               </div>
             )}

@@ -1,16 +1,35 @@
-
-import { useState } from 'react';
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Download, Sparkles, Loader2 } from 'lucide-react';
+import {
+  Copy,
+  Download,
+  Sparkles,
+  Loader2,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+interface TestCase {
+  id: string;
+  title: string;
+  description: string;
+  preconditions?: string[];
+  steps: string[];
+  expected_result: string;
+  priority: string;
+  category: string;
+  test_data?: any;
+}
+
 const TestCaseGenerator = () => {
-  const [userStory, setUserStory] = useState('');
-  const [testCases, setTestCases] = useState<string[]>([]);
+  const [userStory, setUserStory] = useState("");
+  const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [expandedCases, setExpandedCases] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   const generateTestCases = async () => {
@@ -18,36 +37,86 @@ const TestCaseGenerator = () => {
       toast({
         title: "Error",
         description: "Please enter a user story first",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
     setIsGenerating(true);
-    
-    // Simulate AI processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    setTestCases([]);
+    setExpandedCases(new Set());
 
-    const mockTestCases = [
-      `Given a user is on the login page, when they enter valid credentials, then they should be redirected to the dashboard`,
-      `Given a user is on the login page, when they enter invalid credentials, then they should see an error message`,
-      `Given a user is on the login page, when they leave the email field empty, then they should see a validation error`,
-      `Given a user is on the login page, when they leave the password field empty, then they should see a validation error`,
-      `Given a user has entered credentials, when they click the "Remember Me" checkbox, then their credentials should be saved for future sessions`,
-      `Given a user is logged in, when they click the logout button, then they should be redirected to the login page`
-    ];
+    try {
+      const response = await fetch("/api/generate-test-cases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: userStory }),
+      });
 
-    setTestCases(mockTestCases);
-    setIsGenerating(false);
-    
-    toast({
-      title: "Success",
-      description: `Generated ${mockTestCases.length} test cases`,
-    });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate test cases");
+      }
+
+      const data = await response.json();
+      let cases = data.testCases;
+
+      // Handle markdown-wrapped JSON response from Gemini
+      if (typeof cases === "string") {
+        // Remove markdown code blocks if present
+        if (cases.includes("```json")) {
+          cases = cases.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+        }
+
+        try {
+          // Try to parse as JSON first
+          const parsedCases = JSON.parse(cases);
+          if (Array.isArray(parsedCases)) {
+            cases = parsedCases;
+          } else {
+            cases = [parsedCases];
+          }
+        } catch (e) {
+          // If JSON parsing fails, create a simple test case
+          cases = [
+            {
+              id: "TC-001",
+              title: "Generated Test Case",
+              description: cases,
+              steps: [cases],
+              expected_result: "Test should pass",
+              priority: "Medium",
+              category: "Functional",
+            },
+          ];
+        }
+      }
+
+      setTestCases(cases);
+      toast({
+        title: "Success",
+        description: `Generated ${cases.length} test cases`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "Failed to generate test cases",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const copyTestCases = () => {
-    const text = testCases.join('\n\n');
+    const text = testCases
+      .map(
+        (tc) =>
+          `${tc.title}\n${tc.description}\n\nSteps:\n${tc.steps
+            .map((step, i) => `${i + 1}. ${step}`)
+            .join("\n")}\n\nExpected Result: ${tc.expected_result}`
+      )
+      .join("\n\n---\n\n");
     navigator.clipboard.writeText(text);
     toast({
       title: "Copied",
@@ -56,19 +125,67 @@ const TestCaseGenerator = () => {
   };
 
   const downloadTestCases = () => {
-    const text = testCases.join('\n\n');
-    const blob = new Blob([text], { type: 'text/plain' });
+    const text = testCases
+      .map(
+        (tc) =>
+          `${tc.title}\n${tc.description}\n\nSteps:\n${tc.steps
+            .map((step, i) => `${i + 1}. ${step}`)
+            .join("\n")}\n\nExpected Result: ${tc.expected_result}`
+      )
+      .join("\n\n---\n\n");
+    const blob = new Blob([text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'test-cases.txt';
+    a.download = "test-cases.txt";
     a.click();
     URL.revokeObjectURL(url);
-    
+
     toast({
       title: "Downloaded",
       description: "Test cases downloaded as text file",
     });
+  };
+
+  const toggleExpanded = (id: string) => {
+    const newExpanded = new Set(expandedCases);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
+    }
+    setExpandedCases(newExpanded);
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority.toLowerCase()) {
+      case "critical":
+      case "high":
+        return "destructive";
+      case "medium":
+        return "default";
+      case "low":
+        return "secondary";
+      default:
+        return "outline";
+    }
+  };
+
+  const getCategoryColor = (category: string) => {
+    switch (category.toLowerCase()) {
+      case "positive":
+        return "default";
+      case "negative":
+        return "destructive";
+      case "security":
+        return "destructive";
+      case "ui/ux":
+        return "secondary";
+      case "edge":
+        return "outline";
+      default:
+        return "outline";
+    }
   };
 
   return (
@@ -80,62 +197,179 @@ const TestCaseGenerator = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <label className="text-sm font-medium mb-2 block">User Story / Feature Description</label>
-          <Textarea
-            placeholder="As a user, I want to be able to login to the application so that I can access my dashboard..."
-            value={userStory}
-            onChange={(e) => setUserStory(e.target.value)}
-            className="min-h-24"
-          />
-        </div>
-
-        <Button 
-          onClick={generateTestCases} 
-          disabled={isGenerating}
-          className="w-full"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Generating Test Cases...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4 mr-2" />
-              Generate Test Cases
-            </>
-          )}
-        </Button>
-
-        {testCases.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Badge variant="secondary">{testCases.length} Test Cases Generated</Badge>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={copyTestCases}>
-                  <Copy className="w-4 h-4 mr-1" />
-                  Copy
-                </Button>
-                <Button variant="outline" size="sm" onClick={downloadTestCases}>
-                  <Download className="w-4 h-4 mr-1" />
-                  Download
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {testCases.map((testCase, index) => (
-                <Card key={index} className="p-3">
-                  <div className="flex items-start justify-between">
-                    <Badge variant="outline" className="mb-2">TC{index + 1}</Badge>
-                  </div>
-                  <p className="text-sm">{testCase}</p>
-                </Card>
-              ))}
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Input Section */}
+          <div className="flex flex-col h-[50vh]">
+            <label className="text-sm font-medium mb-2 block">
+              User Story / Feature Description
+            </label>
+            <Textarea
+              placeholder="As a user, I want to be able to login to the application so that I can access my dashboard..."
+              value={userStory}
+              onChange={(e) => setUserStory(e.target.value)}
+              className="min-h-24 mb-4 flex-1 resize-none"
+            />
+            <Button
+              onClick={generateTestCases}
+              disabled={isGenerating}
+              className="w-full"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating Test Cases...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate Test Cases
+                </>
+              )}
+            </Button>
           </div>
-        )}
+
+          {/* Output Section */}
+          <div className="flex flex-col h-[50vh]">
+            {testCases.length > 0 ? (
+              <div className="space-y-4 overflow-y-auto flex-1 flex flex-col">
+                <div className="flex items-center justify-between">
+                  <Badge variant="secondary">
+                    {testCases.length} Test Cases Generated
+                  </Badge>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={copyTestCases}>
+                      <Copy className="w-4 h-4 mr-1" />
+                      Copy
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={downloadTestCases}
+                    >
+                      <Download className="w-4 h-4 mr-1" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-3 overflow-y-auto flex-1">
+                  {testCases.map((testCase, index) => (
+                    <Card key={index} className="p-3">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">
+                            {testCase.id || `TC${index + 1}`}
+                          </Badge>
+                          <Badge variant={getPriorityColor(testCase.priority)}>
+                            {testCase.priority}
+                          </Badge>
+                          <Badge variant={getCategoryColor(testCase.category)}>
+                            {testCase.category}
+                          </Badge>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            toggleExpanded(testCase.id || `TC${index + 1}`)
+                          }
+                        >
+                          {expandedCases.has(
+                            testCase.id || `TC${index + 1}`
+                          ) ? (
+                            <ChevronDown className="w-4 h-4" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+
+                      <div className="mb-2">
+                        <h4 className="font-semibold text-sm">
+                          {testCase.title}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          {testCase.description}
+                        </p>
+                      </div>
+
+                      {expandedCases.has(testCase.id || `TC${index + 1}`) && (
+                        <div className="space-y-3 mt-3 pt-3 border-t">
+                          {testCase.preconditions &&
+                            testCase.preconditions.length > 0 && (
+                              <div>
+                                <h5 className="font-medium text-sm mb-1">
+                                  Preconditions:
+                                </h5>
+                                <ul className="text-sm space-y-1">
+                                  {testCase.preconditions.map(
+                                    (precondition, i) => (
+                                      <li key={i} className="flex items-start">
+                                        <span className="text-muted-foreground mr-2">
+                                          •
+                                        </span>
+                                        {precondition}
+                                      </li>
+                                    )
+                                  )}
+                                </ul>
+                              </div>
+                            )}
+
+                          <div>
+                            <h5 className="font-medium text-sm mb-1">Steps:</h5>
+                            <ol className="text-sm space-y-1">
+                              {testCase.steps.map((step, i) => (
+                                <li key={i} className="flex items-start">
+                                  <span className="text-muted-foreground mr-2 min-w-[20px]">
+                                    {i + 1}.
+                                  </span>
+                                  {step}
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+
+                          <div>
+                            <h5 className="font-medium text-sm mb-1">
+                              Expected Result:
+                            </h5>
+                            <p className="text-sm">
+                              {testCase.expected_result}
+                            </p>
+                          </div>
+
+                          {testCase.test_data &&
+                            Object.keys(testCase.test_data).length > 0 && (
+                              <div>
+                                <h5 className="font-medium text-sm mb-1">
+                                  Test Data:
+                                </h5>
+                                <div className="bg-muted p-2 rounded text-xs font-mono">
+                                  <pre>
+                                    {JSON.stringify(
+                                      testCase.test_data,
+                                      null,
+                                      2
+                                    )}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+                        </div>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center p-8 border border-dashed border-border rounded-lg">
+                <Sparkles className="w-8 h-8 mb-2 text-primary" />
+                <span>Generated test cases will appear here.</span>
+              </div>
+            )}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
