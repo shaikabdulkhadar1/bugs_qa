@@ -31,7 +31,7 @@ if (!GEMINI_API_KEY) {
   console.warn("[WARNING] GEMINI_API_KEY is not set in .env file.");
 }
 
-app.post("/api/generate-test-cases", async (req, res) => {
+app.post("/generate-test-cases", async (req, res) => {
   const { description } = req.body;
   if (!description) {
     return res
@@ -90,7 +90,7 @@ app.post("/api/generate-test-cases", async (req, res) => {
   }
 });
 
-app.post("/api/analyze-bug", async (req, res) => {
+app.post("/analyze-bug", async (req, res) => {
   const { description } = req.body;
   if (!description) {
     return res
@@ -145,7 +145,7 @@ app.post("/api/analyze-bug", async (req, res) => {
   }
 });
 
-app.post("/api/test-api", async (req, res) => {
+app.post("/test-api", async (req, res) => {
   const { method = "GET", url, headers = {}, body } = req.body;
   if (!url) {
     return res.status(400).json({ error: "Missing 'url' in request body." });
@@ -186,7 +186,7 @@ app.post("/api/test-api", async (req, res) => {
   }
 });
 
-app.post("/api/generate-bug-report", async (req, res) => {
+app.post("/generate-bug-report", async (req, res) => {
   const { description, severity } = req.body;
   if (!description || !severity) {
     return res
@@ -234,7 +234,7 @@ app.post("/api/generate-bug-report", async (req, res) => {
   }
 });
 
-app.post("/api/generate-release-notes", async (req, res) => {
+app.post("/generate-release-notes", async (req, res) => {
   const { input } = req.body;
   if (!input) {
     return res.status(400).json({ error: "Missing 'input' in request body." });
@@ -274,12 +274,10 @@ app.post("/api/generate-release-notes", async (req, res) => {
     const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
     res.json({ releaseNotes: text });
   } catch (err) {
-    res
-      .status(500)
-      .json({
-        error: "Failed to generate release notes",
-        details: err.message,
-      });
+    res.status(500).json({
+      error: "Failed to generate release notes",
+      details: err.message,
+    });
   }
 });
 
