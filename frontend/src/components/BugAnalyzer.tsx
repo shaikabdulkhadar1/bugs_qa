@@ -20,6 +20,8 @@ const BugAnalyzer = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
 
+  const MAX_LENGTH = 2000;
+
   const analyzeBug = async () => {
     if (!bugDescription.trim()) {
       toast({
@@ -132,6 +134,20 @@ const BugAnalyzer = () => {
     }
   };
 
+  const handleBugDescriptionChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>
+  ) => {
+    if (e.target.value.length <= MAX_LENGTH) {
+      setBugDescription(e.target.value);
+    } else {
+      toast({
+        title: "Character Limit Reached",
+        description: `Maximum ${MAX_LENGTH} characters allowed.`,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -150,14 +166,28 @@ const BugAnalyzer = () => {
             <Textarea
               placeholder="Describe the bug you encountered, including steps to reproduce, expected vs actual behavior, environment details..."
               value={bugDescription}
-              onChange={(e) => setBugDescription(e.target.value)}
+              onChange={handleBugDescriptionChange}
               className="min-h-24 mb-4 flex-1 resize-none"
+              maxLength={MAX_LENGTH}
             />
+            <div
+              className={`text-xs text-right mt-1 ${
+                bugDescription.length >= MAX_LENGTH
+                  ? "text-red-500"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {bugDescription.length}/{MAX_LENGTH} characters
+            </div>
 
             <div className="flex gap-2">
               <Button
                 onClick={analyzeBug}
-                disabled={isAnalyzing}
+                disabled={
+                  isAnalyzing ||
+                  !bugDescription ||
+                  bugDescription.length > MAX_LENGTH
+                }
                 className="flex-1"
               >
                 {isAnalyzing ? (

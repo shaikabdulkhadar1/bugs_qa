@@ -17,11 +17,14 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Code, Copy, Download, Play, Settings } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function AutomationScripts() {
   const [framework, setFramework] = useState("");
   const [testScenario, setTestScenario] = useState("");
   const [generatedScript, setGeneratedScript] = useState("");
+  const MAX_LENGTH = 2000;
+  const { toast } = useToast();
 
   const generateScript = () => {
     const sampleScript = `// ${framework} Test Script
@@ -34,6 +37,18 @@ describe('Sample Test', () => {
   });
 });`;
     setGeneratedScript(sampleScript);
+  };
+
+  const handleScenarioChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (e.target.value.length <= MAX_LENGTH) {
+      setTestScenario(e.target.value);
+    } else {
+      toast({
+        title: "Character Limit Reached",
+        description: `Maximum ${MAX_LENGTH} characters allowed.`,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -73,18 +88,29 @@ describe('Sample Test', () => {
                 Test Scenario
               </label>
               <Textarea
-                placeholder="Describe your test scenario in plain English...
-Example: Login to the application, navigate to dashboard, click on profile settings, update email address, and verify the change"
+                placeholder="Describe your test scenario in plain English...\nExample: Login to the application, navigate to dashboard, click on profile settings, update email address, and verify the change"
                 value={testScenario}
-                onChange={(e) => setTestScenario(e.target.value)}
+                onChange={handleScenarioChange}
                 className="min-h-32"
+                maxLength={MAX_LENGTH}
               />
+              <div
+                className={`text-xs text-right mt-1 ${
+                  testScenario.length >= MAX_LENGTH
+                    ? "text-red-500"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {testScenario.length}/{MAX_LENGTH} characters
+              </div>
             </div>
 
             <Button
               onClick={generateScript}
               className="w-full"
-              disabled={!framework || !testScenario}
+              disabled={
+                !framework || !testScenario || testScenario.length > MAX_LENGTH
+              }
             >
               <Settings className="w-4 h-4 mr-2" />
               Generate Script

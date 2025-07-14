@@ -32,6 +32,8 @@ const TestCaseGenerator = () => {
   const [expandedCases, setExpandedCases] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
+  const MAX_LENGTH = 2000;
+
   const generateTestCases = async () => {
     if (!userStory.trim()) {
       toast({
@@ -188,6 +190,18 @@ const TestCaseGenerator = () => {
     }
   };
 
+  const handleUserStoryChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (e.target.value.length <= MAX_LENGTH) {
+      setUserStory(e.target.value);
+    } else {
+      toast({
+        title: "Character Limit Reached",
+        description: `Maximum ${MAX_LENGTH} characters allowed.`,
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -204,15 +218,27 @@ const TestCaseGenerator = () => {
               User Story / Feature Description
             </label>
             <Textarea
-              placeholder="As a user, I want to be able to login to the application so that I can access my dashboard..."
+              placeholder="Describe your test scenario in plain English...\nExample: Login to the application, navigate to dashboard, click on profile settings, update email address, and verify the change"
               value={userStory}
-              onChange={(e) => setUserStory(e.target.value)}
-              className="min-h-24 mb-4 flex-1 resize-none"
+              onChange={handleUserStoryChange}
+              className="min-h-32"
+              maxLength={MAX_LENGTH}
             />
+            <div
+              className={`text-xs text-right mt-1 ${
+                userStory.length >= MAX_LENGTH
+                  ? "text-red-500"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {userStory.length}/{MAX_LENGTH} characters
+            </div>
             <Button
               onClick={generateTestCases}
-              disabled={isGenerating}
-              className="w-full"
+              disabled={
+                isGenerating || !userStory || userStory.length > MAX_LENGTH
+              }
+              className="w-full mt-auto"
             >
               {isGenerating ? (
                 <>
